@@ -16,52 +16,109 @@ struct WelcomeView: View {
     @Binding var showingQuiz: Bool
     
     var body: some View {
-        VStack(spacing: 40) {
-            Text("Financial Literacy Quiz")
-                .font(.largeTitle)
-                .fontWeight(.bold)
-                .multilineTextAlignment(.center)
+        ZStack {
+            // Background gradient
+            LinearGradient(
+                gradient: Gradient(colors: [Color.blue.opacity(0.1), Color.white]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .edgesIgnoringSafeArea(.all)
             
-            VStack(spacing: 20) {
-                Text("Follow the creators:")
-                    .font(.title2)
-                
-                HStack(spacing: 30) {
-                    CreatorLink(username: "Talha 2x")
-                    CreatorLink(username: "1of1chuka")
+            VStack(spacing: 45) {
+                // Title Section
+                VStack(spacing: 15) {
+                    Text("Financial")
+                        .font(.system(size: 40, weight: .bold))
+                        .foregroundColor(.blue)
+                    Text("Literacy Quiz")
+                        .font(.system(size: 40, weight: .bold))
+                        .foregroundColor(.blue)
                 }
-            }
-            
-            Button(action: {
-                showingQuiz = true
-            }) {
-                Text("Start Quiz")
-                    .font(.title3)
-                    .fontWeight(.semibold)
+                .padding(.top, 50)
+                
+                // Creators Section
+                VStack(spacing: 25) {
+                    Text("Created By")
+                        .font(.title2)
+                        .foregroundColor(.gray)
+                    
+                    HStack(spacing: 40) {
+                        CreatorLink(
+                            name: "Talha Inam",
+                            url: "https://www.linkedin.com/in/talha-inam-4826b230b/"
+                        )
+                        
+                        CreatorLink(
+                            name: "Chukwuka O",
+                            url: "https://www.linkedin.com/in/chukwukao"
+                        )
+                    }
+                }
+                .padding(.vertical, 20)
+                
+                Spacer()
+                
+                // Start Button
+                Button(action: {
+                    showingQuiz = true
+                }) {
+                    HStack(spacing: 15) {
+                        Text("Start Quiz")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                        Image(systemName: "arrow.right.circle.fill")
+                            .font(.title2)
+                    }
                     .foregroundColor(.white)
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.blue)
-                    .cornerRadius(10)
+                    .padding(.vertical, 20)
+                    .background(
+                        LinearGradient(
+                            gradient: Gradient(colors: [.blue, .blue.opacity(0.8)]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(15)
+                    .shadow(color: .blue.opacity(0.3), radius: 10, x: 0, y: 5)
+                }
+                .padding(.horizontal, 40)
+                .padding(.bottom, 50)
             }
-            .padding(.horizontal, 40)
         }
-        .padding()
     }
 }
 
 struct CreatorLink: View {
-    let username: String
+    let name: String
+    let url: String
     
     var body: some View {
-        Link(destination: URL(string: "https://www.instagram.com/\(username.replacingOccurrences(of: " ", with: ""))")!) {
-            VStack {
+        Link(destination: URL(string: url)!) {
+            VStack(spacing: 12) {
+                // Profile Icon
                 Image(systemName: "person.circle.fill")
-                    .font(.system(size: 40))
-                Text("@\(username)")
-                    .font(.headline)
+                    .font(.system(size: 44))
+                    .foregroundColor(.blue)
+                    .shadow(color: .blue.opacity(0.2), radius: 5)
+                
+                // Name
+                Text(name)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundColor(.gray)
+                
+                // LinkedIn Icon
+                Image(systemName: "link.circle.fill")
+                    .font(.system(size: 24))
+                    .foregroundColor(.blue.opacity(0.8))
             }
-            .foregroundColor(.blue)
+            .padding()
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.white)
+                    .shadow(color: .gray.opacity(0.2), radius: 8)
+            )
         }
     }
 }
