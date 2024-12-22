@@ -3,16 +3,19 @@ import SwiftUI
 struct ContentView: View {
     @State private var showingQuiz = false
     @State private var selectedSet = 1
+    @State private var hasPassedBasicLevel = false
     
     var body: some View {
         if showingQuiz {
-            QuizView(questionSet: selectedSet)
+            QuizView(questionSet: selectedSet,
+                    hasPassedBasicLevel: $hasPassedBasicLevel)
                 .onDisappear {
-                    // Reset selected set when quiz is dismissed
                     selectedSet = 1
                 }
         } else {
-            WelcomeView(showingQuiz: $showingQuiz, selectedSet: $selectedSet)
+            WelcomeView(showingQuiz: $showingQuiz,
+                       selectedSet: $selectedSet,
+                       hasPassedBasicLevel: $hasPassedBasicLevel)
         }
     }
 }
@@ -20,6 +23,7 @@ struct ContentView: View {
 struct WelcomeView: View {
     @Binding var showingQuiz: Bool
     @Binding var selectedSet: Int
+    @Binding var hasPassedBasicLevel: Bool
     
     var body: some View {
         ZStack {
@@ -60,7 +64,12 @@ struct WelcomeView: View {
                             title: "Set 2",
                             subtitle: "Advanced Finance",
                             isSelected: selectedSet == 2,
-                            action: { selectedSet = 2 }
+                            isDisabled: !hasPassedBasicLevel,
+                            action: {
+                                if hasPassedBasicLevel {
+                                    selectedSet = 2
+                                }
+                            }
                         )
                     }
                     .padding(.horizontal)
@@ -85,11 +94,20 @@ struct WelcomeView: View {
                     }
                 }
                 
+                if !hasPassedBasicLevel && selectedSet == 2 {
+                    Text("Complete Basic Level with 70% or higher to unlock Advanced")
+                        .font(.callout)
+                        .foregroundColor(.red)
+                        .padding()
+                }
+                
                 Spacer()
                 
                 // Start Button
                 Button(action: {
-                    showingQuiz = true
+                    if selectedSet == 1 || hasPassedBasicLevel {
+                        showingQuiz = true
+                    }
                 }) {
                     HStack(spacing: 15) {
                         Text("Start Quiz")
@@ -113,6 +131,7 @@ struct WelcomeView: View {
                 }
                 .padding(.horizontal, 40)
                 .padding(.bottom, 50)
+                .disabled(selectedSet == 2 && !hasPassedBasicLevel)
             }
         }
     }
@@ -122,7 +141,16 @@ struct QuestionSetButton: View {
     let title: String
     let subtitle: String
     let isSelected: Bool
+    let isDisabled: Bool
     let action: () -> Void
+    
+    init(title: String, subtitle: String, isSelected: Bool, isDisabled: Bool = false, action: @escaping () -> Void) {
+        self.title = title
+        self.subtitle = subtitle
+        self.isSelected = isSelected
+        self.isDisabled = isDisabled
+        self.action = action
+    }
     
     var body: some View {
         Button(action: action) {
@@ -132,20 +160,26 @@ struct QuestionSetButton: View {
                 Text(subtitle)
                     .font(.subheadline)
                     .foregroundColor(.gray)
+                if isDisabled {
+                    Text("Pass Basic Level First")
+                        .font(.caption)
+                        .foregroundColor(.red)
+                }
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, 15)
             .background(
                 RoundedRectangle(cornerRadius: 12)
-                    .fill(isSelected ? Color.blue.opacity(0.1) : Color.white)
+                    .fill(isDisabled ? Color.gray.opacity(0.1) : (isSelected ? Color.blue.opacity(0.1) : Color.white))
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(isSelected ? Color.blue : Color.gray.opacity(0.3), lineWidth: 2)
+                            .stroke(isDisabled ? Color.gray : (isSelected ? Color.blue : Color.gray.opacity(0.3)), lineWidth: 2)
                     )
             )
             .shadow(color: .gray.opacity(0.1), radius: 5)
         }
-        .foregroundColor(isSelected ? .blue : .primary)
+        .disabled(isDisabled)
+        .foregroundColor(isDisabled ? .gray : (isSelected ? .blue : .primary))
     }
 }
 
@@ -178,6 +212,7 @@ struct CreatorLink: View {
         }
     }
 }
+
 struct QuizView: View {
     struct Question: Identifiable {
         let id = UUID()
@@ -194,11 +229,13 @@ struct QuizView: View {
     @State private var showingCorrectAnswer = false
     @State private var questions: [Question] = []
     @State private var currentSet: Int
+    @Binding var hasPassedBasicLevel: Bool
     let questionSet: Int
     
-    init(questionSet: Int) {
+    init(questionSet: Int, hasPassedBasicLevel: Binding<Bool>) {
         self.questionSet = questionSet
         self._currentSet = State(initialValue: questionSet)
+        self._hasPassedBasicLevel = hasPassedBasicLevel
         _questions = State(initialValue: questionSet == 1 ? Self.set1Questions : Self.set2Questions)
     }
     
@@ -227,10 +264,29 @@ struct QuizView: View {
             Text("Your score: \(score) out of \(questions.count)")
                 .font(.headline)
             
+            let percentageScore = Double(score) / Double(questions.count) * 100
+            Text("Percentage: \(Int(percentageScore))%")
+                .font(.title2)
+                .foregroundColor(percentageScore >= 70 ? .green : .red)
+                .padding(.top, 5)
+            
             Text("Quiz Level: \(currentSet == 1 ? "Basic" : "Advanced")")
                 .font(.subheadline)
                 .foregroundColor(.gray)
                 .padding(.top, 5)
+            
+            if currentSet == 1 {
+                if percentageScore >= 70 {
+                    Text("🎉 Congratulations! You've unlocked the Advanced Level!")
+                        .foregroundColor(.green)
+                        .multilineTextAlignment(.center)
+                        .padding()
+                } else {
+                    Text("You need 70% to unlock the Advanced Level")
+                        .foregroundColor(.red)
+                        .padding()
+                }
+            }
             
             VStack(spacing: 15) {
                 Button("Restart Same Level") {
@@ -241,13 +297,24 @@ struct QuizView: View {
                 .foregroundColor(.white)
                 .cornerRadius(10)
                 
-                Button("Try \(currentSet == 1 ? "Advanced" : "Basic") Level") {
-                    switchLevel()
+                if currentSet == 1 && percentageScore >= 70 {
+                    Button("Try Advanced Level") {
+                        hasPassedBasicLevel = true
+                        switchLevel()
+                    }
+                    .padding()
+                    .background(Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+                } else if currentSet == 2 {
+                    Button("Try Basic Level") {
+                        switchLevel()
+                    }
+                    .padding()
+                    .background(Color.green)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
                 }
-                .padding()
-                .background(Color.green)
-                .foregroundColor(.white)
-                .cornerRadius(10)
             }
             .padding(.top, 20)
         }
@@ -307,67 +374,72 @@ struct QuizView: View {
     }
     
     private func backgroundColor(for option: String) -> Color {
-            if !showingCorrectAnswer {
-                return selectedAnswer == option ? .blue : .gray.opacity(0.2)
+        if !showingCorrectAnswer {
+            return selectedAnswer == option ? .blue : .gray.opacity(0.2)
+        } else {
+            if option == questions[currentQuestionIndex].answer {
+                return .green
+            } else if option == selectedAnswer {
+                return .red
             } else {
-                if option == questions[currentQuestionIndex].answer {
-                    return .green
-                } else if option == selectedAnswer {
-                    return .red
-                } else {
-                    return .gray.opacity(0.2)
-                }
+                return .gray.opacity(0.2)
             }
         }
-        
-        private func foregroundColor(for option: String) -> Color {
-            if !showingCorrectAnswer {
-                return selectedAnswer == option ? .white : .primary
+    }
+    
+    private func foregroundColor(for option: String) -> Color {
+        if !showingCorrectAnswer {
+            return selectedAnswer == option ? .white : .primary
+        } else {
+            if option == questions[currentQuestionIndex].answer || option == selectedAnswer {
+                return .white
             } else {
-                if option == questions[currentQuestionIndex].answer || option == selectedAnswer {
-                    return .white
-                } else {
-                    return .primary
-                }
+                return .primary
             }
         }
-        
-        private func selectAnswer(_ answer: String) {
-            if !showingCorrectAnswer {
-                selectedAnswer = answer
-            }
+    }
+    
+    private func selectAnswer(_ answer: String) {
+        if !showingCorrectAnswer {
+            selectedAnswer = answer
         }
-        
-        private func nextQuestion() {
-            if currentQuestionIndex + 1 < questions.count {
-                currentQuestionIndex += 1
-                selectedAnswer = ""
-                showingCorrectAnswer = false
-            } else {
-                showingScore = true
-            }
-        }
-        
-        private func restartSameLevel() {
-            questions = currentSet == 1 ? Self.set1Questions : Self.set2Questions
-            resetQuizState()
-        }
-        
-        private func switchLevel() {
-            currentSet = currentSet == 1 ? 2 : 1
-            questions = currentSet == 1 ? Self.set1Questions : Self.set2Questions
-            resetQuizState()
-        }
-        
-        private func resetQuizState() {
-            questions.shuffle()
-            currentQuestionIndex = 0
-            score = 0
+    }
+    
+    private func nextQuestion() {
+        if currentQuestionIndex + 1 < questions.count {
+            currentQuestionIndex += 1
             selectedAnswer = ""
             showingCorrectAnswer = false
-            showingScore = false
+        } else {
+            showingScore = true
+            if currentSet == 1 {
+                let percentageScore = Double(score) / Double(questions.count) * 100
+                if percentageScore >= 70 {
+                    hasPassedBasicLevel = true
+                }
+            }
         }
-
+    }
+    
+    private func restartSameLevel() {
+        questions = currentSet == 1 ? Self.set1Questions : Self.set2Questions
+        resetQuizState()
+    }
+    
+    private func switchLevel() {
+        currentSet = currentSet == 1 ? 2 : 1
+        questions = currentSet == 1 ? Self.set1Questions : Self.set2Questions
+        resetQuizState()
+    }
+    
+    private func resetQuizState() {
+        questions.shuffle()
+        currentQuestionIndex = 0
+        score = 0
+        selectedAnswer = ""
+        showingCorrectAnswer = false
+        showingScore = false
+    }
     
     // Basic questions (Set 1)
     static let set1Questions: [Question] = [
