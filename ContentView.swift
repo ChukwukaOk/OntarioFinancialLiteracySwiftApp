@@ -255,104 +255,129 @@ struct QuizView: View {
     @State private var score = 0
     @State private var showingScore = false
     @State private var selectedAnswer = ""
+    @State private var showingCorrectAnswer = false
     
     var body: some View {
-        NavigationView {
-            VStack(spacing: 20) {
-                if showingScore {
-                    VStack {
-                        Text("Quiz Complete!")
-                            .font(.title)
-                            .padding()
-                        
-                        Text("Your score: \(score) out of \(questions.count)")
-                            .font(.headline)
-                        
-                        Button("Restart Quiz") {
-                            restartQuiz()
-                        }
-                        .padding()
-                        .background(Color.blue)
-                        .foregroundColor(.white)
-                        .cornerRadius(10)
-                    }
-                } else {
-                    VStack(alignment: .leading, spacing: 20) {
-                        ProgressView(value: Double(currentQuestionIndex + 1), total: Double(questions.count))
-                            .padding()
-                        
-                        Text("Question \(currentQuestionIndex + 1) of \(questions.count)")
-                            .font(.headline)
-                            .padding(.horizontal)
-                        
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: 20) {
-                                Text(questions[currentQuestionIndex].title)
-                                    .font(.title2)
-                                    .padding()
-                                
-                                ForEach(questions[currentQuestionIndex].options, id: \.self) { option in
-                                    Button(action: {
-                                        selectAnswer(option)
-                                    }) {
-                                        Text(option)
-                                            .frame(maxWidth: .infinity, alignment: .leading)
-                                            .padding()
-                                            .background(selectedAnswer == option ? Color.blue : Color.gray.opacity(0.2))
-                                            .foregroundColor(selectedAnswer == option ? .white : .primary)
-                                            .cornerRadius(10)
-                                    }
-                                }
-                            }
-                            .padding()
-                        }
-                        
-                        if !selectedAnswer.isEmpty {
-                            Button("Next Question") {
-                                nextQuestion()
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.green)
-                            .foregroundColor(.white)
-                            .cornerRadius(10)
-                            .padding(.horizontal)
-                        }
-                    }
-                }
-            }
-            .navigationTitle("Financial Literacy Quiz")
-            .onAppear {
-                questions.shuffle()
-            }
-        }
+    NavigationView {
+    VStack(spacing: 20) {
+    if showingScore {
+    VStack {
+    Text("Quiz Complete!")
+    .font(.title)
+    .padding()
+    Text("Your score: \(score) out of \(questions.count)")
+    .font(.headline)
+    Button("Restart Quiz") {
+    restartQuiz()
     }
-    
+    .padding()
+    .background(Color.blue)
+    .foregroundColor(.white)
+    .cornerRadius(10)
+    }
+    } else {
+    VStack(alignment: .leading, spacing: 20) {
+    ProgressView(value: Double(currentQuestionIndex + 1), total: Double(questions.count))
+    .padding()
+    Text("Question \(currentQuestionIndex + 1) of \(questions.count)")
+    .font(.headline)
+    .padding(.horizontal)
+    ScrollView {
+    VStack(alignment: .leading, spacing: 20) {
+    Text(questions[currentQuestionIndex].title)
+    .font(.title2)
+    .padding()
+    ForEach(questions[currentQuestionIndex].options, id: \.self) { option in
+    Button(action: {
+    selectAnswer(option)
+    }) {
+    Text(option)
+    .frame(maxWidth: .infinity, alignment: .leading)
+    .padding()
+    .background(backgroundColor(for: option))
+    .foregroundColor(foregroundColor(for: option))
+    .cornerRadius(10)
+    }
+    .disabled(showingCorrectAnswer)
+    }
+    }
+    .padding()
+    }
+    if showingCorrectAnswer || !selectedAnswer.isEmpty {
+    Button(showingCorrectAnswer ? "Next Question" : "Submit Answer") {
+    if showingCorrectAnswer {
+    nextQuestion()
+    } else {
+    showingCorrectAnswer = true
+    if selectedAnswer == questions[currentQuestionIndex].answer {
+    score += 1
+    }
+    }
+    }
+    .frame(maxWidth: .infinity)
+    .padding()
+    .background(Color.green)
+    .foregroundColor(.white)
+    .cornerRadius(10)
+    .padding(.horizontal)
+    }
+    }
+    }
+    }
+    .navigationTitle("Financial Literacy Quiz")
+    .onAppear {
+    questions.shuffle()
+    }
+    }
+    }
+    private func backgroundColor(for option: String) -> Color {
+    if !showingCorrectAnswer {
+    return selectedAnswer == option ? .blue : .gray.opacity(0.2)
+    } else {
+    if option == questions[currentQuestionIndex].answer {
+    return .green
+    } else if option == selectedAnswer {
+    return .red
+    } else {
+    return .gray.opacity(0.2)
+    }
+    }
+    }
+    private func foregroundColor(for option: String) -> Color {
+    if !showingCorrectAnswer {
+    return selectedAnswer == option ? .white : .primary
+    } else {
+    if option == questions[currentQuestionIndex].answer || option == selectedAnswer {
+    return .white
+    } else {
+    return .primary
+    }
+    }
+    }
     private func selectAnswer(_ answer: String) {
-        selectedAnswer = answer
-        if answer == questions[currentQuestionIndex].answer {
-            score += 1
-        }
+    if !showingCorrectAnswer {
+    selectedAnswer = answer
     }
-    
+    }
     private func nextQuestion() {
-        if currentQuestionIndex + 1 < questions.count {
-            currentQuestionIndex += 1
-            selectedAnswer = ""
-        } else {
-            showingScore = true
-        }
+    if currentQuestionIndex + 1 < questions.count {
+    currentQuestionIndex += 1
+    selectedAnswer = ""
+    showingCorrectAnswer = false
+    } else {
+    showingScore = true
     }
-    
+    }
     private func restartQuiz() {
-        questions.shuffle()
-        currentQuestionIndex = 0
-        score = 0
-        selectedAnswer = ""
-        showingScore = false
+    questions.shuffle()
+    currentQuestionIndex = 0
+    score = 0
+    selectedAnswer = ""
+    showingCorrectAnswer = false
     }
-}
+    }
 
-#Preview {
+
+    #Preview {
     ContentView()
-}
+    }
